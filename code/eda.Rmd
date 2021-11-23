@@ -30,8 +30,8 @@ shows = c("TNG", "DS9", "VOY", "ENT")
 maincast = list()
 maincast$TNG = c("PICARD", "RIKER", "LAFORGE", "WORF", "CRUSHER", "TROI", "DATA", "WESLEY")
 maincast$DS9 = c("SISKO", "ODO", "DAX", "JAKE", "OBRIEN", "QUARK", "BASHIR", "KIRA", "WORF")
-maincast$ENT = c("ARCHER", "TPOL", "PHLOX", "REED", "TRAVIS", "HOSHI", "TUCKER")
 maincast$VOY = c("JANEWAY", "CHAKOTAY", "TUVOK", "PARIS", "EMH", "TORRES", "KIM", "NEELIX", "KES", "SEVEN")
+maincast$ENT = c("ARCHER", "TPOL", "PHLOX", "REED", "TRAVIS", "HOSHI", "TUCKER")
 
 dat = readRDS("../data/from_imdb_so.rds")
 datw = readRDS("../data/from_imdb_sow.rds")
@@ -44,60 +44,93 @@ dat[,episode_placement := episodeNumber/n_ep_in_season]
 dat[episode_placement < 0.33, partofseason := "start"]
 dat[episode_placement < 0.66 & episode_placement >= 0.33, partofseason := "middle"]
 dat[episode_placement >= 0.66, partofseason := "end"]
+
+st_color = "#fbd11d"
+sgtheme = theme_classic() + 
+  theme(
+    plot.background = element_rect(fill = "black", color="black"),
+    panel.background = element_rect(fill="black", color="black"),
+    axis.text = element_text(color = st_color),
+    axis.ticks = element_line(color=st_color),
+    axis.line = element_line(color=st_color),
+    axis.title = element_text(color = st_color),
+    title = element_text(color = st_color)
+)
 ```
 
 ```{r basics}
-ggplot(dat) + aes(imdb) + geom_histogram() + scale_x_continuous(breaks = (0:5)*2) + xlim(c(3,10))
+
+ggplot(dat) + aes(imdb) + geom_histogram(fill = st_color) +
+  scale_x_continuous(breaks = (0:5)*2) + 
+  xlim(c(3,10)) +
+  xlab("IMDB Rating") +
+  ggtitle("Histogram of Ratings across episodes") +
+  sgtheme
 ggplot(data.frame(table(dat$director))) + aes(x=Var1,y=Freq) + geom_col() 
 print(table(dat$director, dat$show))
 ```
 
 ```{r bivariate}
-ggplot(dat) + aes(x=show_f, y=imdb) + geom_boxplot()
+ggplot(dat) + aes(x=show_f, y=imdb) +
+  geom_boxplot(fill = "goldenrod", outlier.color = "white") + 
+  sgtheme +
+  xlab("SHOW") + ylab("IMDb Rating") + 
+  ylim(c(3.5, 9.5)) +
+  scale_y_continuous(breaks = 1:10, limits = c(3.24, 9.55))
+ggsave(filename = "../presentation/show-box.png")
 for(sh in shows){
   print(
-    ggplot(dat[show==sh]) + aes(x=season_f, y=imdb) + geom_boxplot()
+    ggplot(dat[show==sh]) + aes(x=season_f, y=imdb) + 
+      geom_boxplot(fill = "goldenrod", outlier.color = "white") + 
+      sgtheme + 
+      scale_y_continuous(breaks = 1:10, limits = c(3.24, 9.55)) +
+      xlab("Season") + ylab("IMDb Rating") + ggtitle(sh)
   )
+  ggsave(filename = paste0("../presentation/",sh,"-box.png"))
 }
 ```
 
 ```{r cast}
 charac_power= list()
-charac_power$TNG = sapply(maincast$TNG, function(z) cor(dat[show=="TNG"]$imdb, dat[show=="TNG"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = .)
-charac_power$DS9 = sapply(maincast$DS9, function(z) cor(dat[show=="DS9"]$imdb, dat[show=="DS9"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = .)
-charac_power$VOY = sapply(maincast$VOY, function(z) cor(dat[show=="VOY"]$imdb, dat[show=="VOY"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = .)
-charac_power$ENT = sapply(maincast$ENT, function(z) cor(dat[show=="ENT"]$imdb, dat[show=="ENT"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = .)
+charac_power$TNG = sapply(maincast$TNG, function(z) cor(dat[show=="TNG"]$imdb, dat[show=="TNG"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = ., show="TNG")
+charac_power$DS9 = sapply(maincast$DS9, function(z) cor(dat[show=="DS9"]$imdb, dat[show=="DS9"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = ., show="DS9")
+charac_power$VOY = sapply(maincast$VOY, function(z) cor(dat[show=="VOY"]$imdb, dat[show=="VOY"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = ., show="VOY")
+charac_power$ENT = sapply(maincast$ENT, function(z) cor(dat[show=="ENT"]$imdb, dat[show=="ENT"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = ., show="ENT")
 
 for(cp in charac_power){
   print(
-    ggplot(cp) + aes(x=charac, y=corr) + geom_col()
+    ggplot(cp) + aes(x=charac, y=corr) + geom_col(fill = "goldenrod") + sgtheme + 
+      ggtitle(cp$show[1]) +
+      xlab("Character") + 
+      ylab("Correlation of Prominence with IMDb Rating")
   )
+  ggsave(paste0("../presentation/",sh,"-cor.png"))
 }
 ```
 
 ```{r basemodel}
 m0 = lmer(formula = imdb ~  (1|season_f), data = dat)
-print(summary(m0))
-dotplot.ranef.mer(ranef(m0))
+#print(summary(m0))
+#dotplot.ranef.mer(ranef(m0))
 
 m1 = lmer(formula = imdb ~  (1|director_f), data = dat)
-print(summary(m1))
-dotplot.ranef.mer(ranef(m1))
+#print(summary(m1))
+#dotplot.ranef.mer(ranef(m1))
 
 m2 = lmer(formula = imdb ~  (1|season_f) + (1|director_f), data = dat)
-print(summary(m2))
-dotplot.ranef.mer(ranef(m2))
+#print(summary(m2))
+#dotplot.ranef.mer(ranef(m2))
 
 f3 = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
-f3 = paste("imdb ~",f3, " + partofseason + s(1|season_f) + (1|director_f)") %>% as.formula
+f3 = paste("imdb ~",f3, " + partofseason + (1|season_f) + (1|director_f)") %>% as.formula
 m3 = lmer(formula = f3, data = dat)
-print(summary(m3))
-dotplot.ranef.mer(ranef(m3))
+#print(summary(m3))
+#dotplot.ranef.mer(ranef(m3))
 
 f4 = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
 f4 = paste("imdb ~",f4) %>% as.formula
-m4 = lm(formula = f4, data = dat)
-print(summary(m4))
+#m4 = lm(formula = f4, data = dat)
+#print(summary(m4))
 
 
 ```
@@ -118,6 +151,8 @@ cim3$charac = substr(cim3$varname, 6, 1e4)
 
 
 ```{r m3_interplot}
+print(summary(m3))
+dotplot.ranef.mer(ranef(m3))
 
 for(sh in names(maincast)){
   sm3sdat = sm3coef[sm3coef$charac %in% maincast[[sh]],]
