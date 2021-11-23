@@ -1,0 +1,164 @@
+---
+title: "main"
+output: html_notebook
+---
+issues:  
+- dropping one cast variable due to singularity
+- using "other" as a character, ?as base variable
+- female vs male model interpretation
+- captain indicate
+- too many variables for data
+- anova tests
+
+
+
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+
+library(data.table)
+library(rjson)
+library(magrittr)
+library(ggplot2)
+library(lme4)
+
+shows = c("TNG", "DS9", "VOY", "ENT")
+maincast = list()
+maincast$TNG = c("PICARD", "RIKER", "LAFORGE", "WORF", "CRUSHER", "TROI", "DATA", "WESLEY")
+maincast$DS9 = c("SISKO", "ODO", "DAX", "JAKE", "OBRIEN", "QUARK", "BASHIR", "KIRA", "WORF")
+maincast$ENT = c("ARCHER", "TPOL", "PHLOX", "REED", "TRAVIS", "HOSHI", "TUCKER")
+maincast$VOY = c("JANEWAY", "CHAKOTAY", "TUVOK", "PARIS", "EMH", "TORRES", "KIM", "NEELIX", "KES", "SEVEN")
+
+dat = readRDS("../data/from_imdb_so.rds")
+datw = readRDS("../data/from_imdb_sow.rds")
+dat$director_f = as.factor(dat$director)
+dat$show_f = factor(dat$show, levels = shows)
+dat$season_f = factor(paste(dat$show, dat$seasonNumber, sep=":"))
+names(dat)[names(dat)=="cast_T'POL"] = "cast_TPOL"
+dat[,n_ep_in_season := .N, by=season_f]
+dat[,episode_placement := episodeNumber/n_ep_in_season]
+dat[episode_placement < 0.33, partofseason := "start"]
+dat[episode_placement < 0.66 & episode_placement >= 0.33, partofseason := "middle"]
+dat[episode_placement >= 0.66, partofseason := "end"]
+```
+
+```{r basics}
+ggplot(dat) + aes(imdb) + geom_histogram() + scale_x_continuous(breaks = (0:5)*2) + xlim(c(3,10))
+ggplot(data.frame(table(dat$director))) + aes(x=Var1,y=Freq) + geom_col() 
+print(table(dat$director, dat$show))
+```
+
+```{r bivariate}
+ggplot(dat) + aes(x=show_f, y=imdb) + geom_boxplot()
+for(sh in shows){
+  print(
+    ggplot(dat[show==sh]) + aes(x=season_f, y=imdb) + geom_boxplot()
+  )
+}
+```
+
+```{r cast}
+charac_power= list()
+charac_power$TNG = sapply(maincast$TNG, function(z) cor(dat[show=="TNG"]$imdb, dat[show=="TNG"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = .)
+charac_power$DS9 = sapply(maincast$DS9, function(z) cor(dat[show=="DS9"]$imdb, dat[show=="DS9"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = .)
+charac_power$VOY = sapply(maincast$VOY, function(z) cor(dat[show=="VOY"]$imdb, dat[show=="VOY"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = .)
+charac_power$ENT = sapply(maincast$ENT, function(z) cor(dat[show=="ENT"]$imdb, dat[show=="ENT"][[paste0("cast_",z)]]) ) %>% data.table(charac = names(.), corr = .)
+
+for(cp in charac_power){
+  print(
+    ggplot(cp) + aes(x=charac, y=corr) + geom_col()
+  )
+}
+```
+
+```{r basemodel}
+m0 = lmer(formula = imdb ~  (1|season_f), data = dat)
+print(summary(m0))
+dotplot.ranef.mer(ranef(m0))
+
+m1 = lmer(formula = imdb ~  (1|director_f), data = dat)
+print(summary(m1))
+dotplot.ranef.mer(ranef(m1))
+
+m2 = lmer(formula = imdb ~  (1|season_f) + (1|director_f), data = dat)
+print(summary(m2))
+dotplot.ranef.mer(ranef(m2))
+
+f3 = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
+f3 = paste("imdb ~",f3, " + partofseason + s(1|season_f) + (1|director_f)") %>% as.formula
+m3 = lmer(formula = f3, data = dat)
+print(summary(m3))
+dotplot.ranef.mer(ranef(m3))
+
+f4 = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
+f4 = paste("imdb ~",f4) %>% as.formula
+m4 = lm(formula = f4, data = dat)
+print(summary(m4))
+
+
+```
+
+
+```{r m3_interpret}
+sm3 = summary(m3)
+sm3coef = data.frame(sm3$coefficients)
+sm3coef$varname = rownames(sm3coef)
+sm3coef$charac = substr(sm3coef$varname, 6, 1e4)
+
+cim3 = confint(m3,level = 0.95) %>% data.frame
+cim3$varname = rownames(cim3)
+names(cim3) = c("lower","upper","varname")
+cim3$charac = substr(cim3$varname, 6, 1e4)
+
+```
+
+
+```{r m3_interplot}
+
+for(sh in names(maincast)){
+  sm3sdat = sm3coef[sm3coef$charac %in% maincast[[sh]],]
+  cimsdat = cim3[cim3$charac %in% maincast[[sh]],]
+  print(
+    ggplot() + aes(x=charac, y=Estimate) + geom_point(data=sm3sdat) + 
+      geom_errorbar(aes(x=charac,ymin = lower, ymax = upper,y=NULL), data=cimsdat) +
+      ggtitle(sh) 
+  )
+}
+```
+
+```{r posthoc_charac}
+interests = c("TROI", "WESLEY", "CRUSHER", "DAX", "SISKO", "TUCKER", "KIM","NEELIX")
+for(charac in interests){
+  varname = paste0("cast_",charac)
+  print(
+    ggplot(dat[dat[[varname]] > 0,c("imdb",varname),with=F]) + aes_string(varname,"imdb") + geom_point() + ggtitle(paste(varname, "n =", sum(dat[[varname]]>0)))
+  )
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
