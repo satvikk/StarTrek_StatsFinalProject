@@ -33,8 +33,7 @@ maincast$DS9 = c("SISKO", "ODO", "DAX", "JAKE", "OBRIEN", "QUARK", "BASHIR", "KI
 maincast$VOY = c("JANEWAY", "CHAKOTAY", "TUVOK", "PARIS", "EMH", "TORRES", "KIM", "NEELIX", "KES", "SEVEN")
 maincast$ENT = c("ARCHER", "TPOL", "PHLOX", "REED", "TRAVIS", "HOSHI", "TUCKER")
 
-dat = readRDS("../data/from_imdb_so.rds")
-datw = readRDS("../data/from_imdb_sow.rds")
+dat = readRDS("../data/from_imdb_sow.rds")
 dat$director_f = as.factor(dat$director)
 dat$show_f = factor(dat$show, levels = shows)
 dat$season_f = factor(paste(dat$show, dat$seasonNumber, sep=":"))
@@ -104,7 +103,7 @@ for(cp in charac_power){
       xlab("Character") + 
       ylab("Correlation of Prominence with IMDb Rating")
   )
-  ggsave(paste0("../presentation/",sh,"-cor.png"))
+  ggsave(paste0("../presentation/",cp$show[1],"-cor.png"))
 }
 ```
 
@@ -125,7 +124,7 @@ f3 = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
 f3 = paste("imdb ~",f3, " + partofseason + (1|season_f) + (1|director_f)") %>% as.formula
 m3 = lmer(formula = f3, data = dat)
 #print(summary(m3))
-#dotplot.ranef.mer(ranef(m3))
+
 
 f4 = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
 f4 = paste("imdb ~",f4) %>% as.formula
@@ -158,10 +157,12 @@ for(sh in names(maincast)){
   sm3sdat = sm3coef[sm3coef$charac %in% maincast[[sh]],]
   cimsdat = cim3[cim3$charac %in% maincast[[sh]],]
   print(
-    ggplot() + aes(x=charac, y=Estimate) + geom_point(data=sm3sdat) + 
-      geom_errorbar(aes(x=charac,ymin = lower, ymax = upper,y=NULL), data=cimsdat) +
-      ggtitle(sh) 
+    ggplot() + aes(x=charac, y=Estimate) + geom_point(data=sm3sdat, color = 'goldenrod') + 
+      geom_errorbar(aes(x=charac,ymin = lower, ymax = upper,y=NULL), data=cimsdat, color = 'goldenrod') +
+      geom_hline(color = 'goldenrod', yintercept = 0, linetype = 2) +
+      ggtitle(sh) + sgtheme
   )
+  ggsave(filename = paste0("../presentation/",sh,"-fx.png"))
 }
 ```
 
@@ -177,7 +178,7 @@ for(charac in interests){
 
 
 
-
+$ y_{ijk} = \beta_0 + \beta_{0,j}+ \beta_{0,k} + \sum\limits_{p=1}^{33}\beta_px_{i,p} + \epsilon_i$
 
 
 
