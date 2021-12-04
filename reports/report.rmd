@@ -1,0 +1,49 @@
+---
+title: "Star Trek: The Analysis"
+author: "Satvik Kishore"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+## Summary  
+
+Star Trek is Science Fiction media franchise spanning several TV shows, movies, books, video games, and more. In this analysis, I focused on four Star Trek TV shows that ran in sequence from 1987 through 2005, with significant overlaps in the years they each ran. The questions I wanted to answer are:  
+
+- Are their differences in quality across the four shows and their constituent seasons
+- Which characters had the greatest influence on the rating of the episode, either positive or negative
+- Are their differences in quality across the directors
+
+To answer these questions, I used IMDb ratings of the episodes. I performed hierarchical linear regressions and answered my questions using the estimates from this model. The most important results were %%%%TODO%%%%  
+
+## Introduction  
+
+Star Trek is one of the most successful science fiction media franchises and was an instant hit with its inception in the 1960s. The series continues to be relevant, with most of the TV shows being available on Over-the-top services like Netflix. As of December 2021, there are three TV shows running, with one another set to begin in 2021. In my analysis, I have chosen the shows The Next Generation, Deep Space 9, Voyager, and Enterprise. These four shows ran from 1987 through 2005 and constitute the largest block of content produced by the franchise. I have omitted The Original Series as well as the newer because of the separation in time between them. In contrast, these four shows had a similar system, with a consistent set of personnel behind their production. The shows are mostly episodic in format, i.e. each episode is self contained within its plot, having an introduction, body, and conclusion. The episodes are not completely independent however, with plot elements sometimes having an effect on the larger story. There are a few multi-parter episodes as well. The shows each have a set of core characters, that have varying degrees of screentime in each episode. In addition there are minor recurring characters and usually a few one-time. In the public, there are varying levels of opinions on the qualities of individual core characters, but there are a clear few fan-favorites and some that are widely disliked. My first question pertains to these perceptions, and my question is on how character screentimes were associated with episode ratings, and whether my findings align with opinions found elsewhere. As is the case with TV shows, there are many directors, and the quality of directors is expected to have a strong effect on the quality of the episodes. Therefore, another research question of mine was does the quality of directors differ, and if yes, which were the best (or worst). My third question was on differences in quality between the shows, and their constituent seasons. 
+
+## Data  
+
+The two sources of data are the IMDb datasets provided IMDb on datasets.imdbws.com (collected on Nov 23, 2021), and script data provided on www.chakoteya.net/StarTrek/index.html. 
+
+<!-- Summary -->
+<!-- A few sentences describing the inferential question(s), the method used and the most important results. -->
+
+<!-- Introduction -->
+<!-- A more in-depth introduction to the inferential question(s) of interest. -->
+
+<!-- Data -->
+<!-- You should describe the data in this section: how you obtained the data, the variables included, dealing with missing/erroneous values, exploratory data analysis etc. -->
+
+<!-- Model -->
+<!-- A detailed description of the model used, how you selected the model, how you selected the variables, model assessment, model validation, and presentation of the model results. What are your overall conclusions in context of the inferential problem(s)? -->
+
+<!-- Conclusions -->
+<!-- In this section, you should present the importance of your findings, and describe any limitations of the study. You can also address future work here if there are extensions of your analysis you find interesting, especially those that may address some of the limitations already mentioned. -->
+

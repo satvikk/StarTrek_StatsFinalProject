@@ -193,8 +193,3 @@ $ y_{ijk} = \beta_0 + \beta_{0,j}+ \beta_{0,k} + \sum\limits_{p=1}^{33}\beta_px_
 
 
 
-
-
-
-
-
