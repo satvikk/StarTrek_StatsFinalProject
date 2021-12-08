@@ -90,9 +90,24 @@ epst$tconst = NULL
 epst$parentTconst = NULL
 epst$imdb = epst$averageRating
 epst$averageRating = NULL
-epst$numVotes = NULL
 
 names(epst)[names(epst)=="cast_O'BRIEN"] = "cast_OBRIEN"
 
 saveRDS(epst, "data/from_imdb_sow.rds")
 
+cast_summer = function(cast, s){
+  sum(sapply(s, function(e) e[cast]), na.rm = T)
+}
+
+s3er = function(sh){
+  s3 = sapply(scripts[[sh]], function(z) sapply(z, function(q) q %>% paste0(collapse=" ") %>% strsplit(" ") %>% extract2(1) %>% length))
+  s3total = sapply(s3,sum) %>% sum(na.rm=T)
+  s3 = sapply(maincast[[sh]], cast_summer, s=s3) / s3total
+}
+
+
+scripts3 = lapply(names(maincast), s3er)
+names(scripts3) = names(maincast)
+names(scripts3$ENT)[2] = "TPOL"
+names(scripts3$DS9)[5] = "OBRIEN"
+saveRDS(scripts3, "data/cast_count.rds")

@@ -12,6 +12,33 @@ knitr::opts_chunk$set(
 	message = FALSE,
 	warning = FALSE
 )
+
+library(data.table)
+library(rjson)
+library(magrittr)
+library(ggplot2)
+library(lme4)
+library(xtable)
+
+shows = c("TNG", "DS9", "VOY", "ENT")
+maincast = list()
+maincast$TNG = c("PICARD", "RIKER", "LAFORGE", "WORF", "CRUSHER", "TROI", "DATA", "WESLEY")
+maincast$DS9 = c("SISKO", "ODO", "DAX", "JAKE", "OBRIEN", "QUARK", "BASHIR", "KIRA", "WORF")
+maincast$VOY = c("JANEWAY", "CHAKOTAY", "TUVOK", "PARIS", "EMH", "TORRES", "KIM", "NEELIX", "KES", "SEVEN")
+maincast$ENT = c("ARCHER", "TPOL", "PHLOX", "REED", "TRAVIS", "HOSHI", "TUCKER")
+
+dat = readRDS("../data/from_imdb_sow.rds")
+s3 = readRDS("../data/cast_count.rds")
+dat$director_f = as.factor(dat$director)
+dat$show_f = factor(dat$show, levels = shows)
+dat$season_f = factor(paste(dat$show, dat$seasonNumber, sep=":"))
+names(dat)[names(dat)=="cast_T'POL"] = "cast_TPOL"
+dat[,n_ep_in_season := .N, by=season_f]
+dat[,episode_placement := episodeNumber/n_ep_in_season]
+dat[episode_placement < 0.33, partofseason := "start"]
+dat[episode_placement < 0.66 & episode_placement >= 0.33, partofseason := "middle"]
+dat[episode_placement >= 0.66, partofseason := "end"]
+
 ```
 
 ## Summary  
@@ -30,7 +57,62 @@ Star Trek is one of the most successful science fiction media franchises and was
 
 ## Data  
 
-The two sources of data are the IMDb datasets provided IMDb on datasets.imdbws.com (collected on Nov 23, 2021), and script data provided on www.chakoteya.net/StarTrek/index.html. 
+The two sources of data are the IMDb datasets provided IMDb on datasets.imdbws.com (collected on Nov 23, 2021), and script data provided on www.chakoteya.net/StarTrek/index.html. The IMDb data was available in a relational schema form. It was very large and had most of IMDb data contained. I filtered and wrangled to select only the four shows in consideration, with the variables: director name, names of writers, episode number, season number, and the IMDb rating. A few episodes had multiple directors. Combination of directors were considered to be a different director. Most episodes had multiple writers, and this variable was dropped from further analysis. The script data was provided as a json, formatted as Show -> episode -> character -> all lines. For each character, within each show, I computed total number of words spoken by the character in the episode, and divided it by the total number of words spoken in the entire episode. This gave me the screentime for each character in each episode as a percentage with the value being between 0 and 100. I only picked main characters from this transformed data and merged it with the IMDb data. There were a few issues with matching episodes as the scripts data sometimes assumed multi-part episodes as single episodes. These episodes were split before merging, and the final data assumes same screentime values for each episode in these multi-part episodes to be the same. 
+
+### Exploratory Data Analysis:  
+
+```{r data_eda1, results='asis', out.width='50%'}
+t1 = data.frame(Show = c("The Next Generations","Deep Space 9","Voyager","Enterprise","Total"),
+                Abbrv. = c(shows,""),
+                n_seasons = c(7,7,7,4, 25),
+                n_episodes = c(176,173,168,97, 614),
+                n_directors = c(38, 33, 33, 20, 73),
+                n_characters = c(8, 9, 10, 7, 33))
+print(xtable(t1, digits = 0, caption = "Data Summary", ), comment=FALSE, include.rownames=FALSE)
+
+ggplot(dat) + aes(imdb) + geom_histogram() +
+  scale_x_continuous(breaks = (0:5)*2) + 
+  xlim(c(3,10)) +
+  xlab("IMDB Rating") +
+  ggtitle("Histogram of Ratings across episodes", subtitle = "Figure 1") +
+  theme_classic()
+
+char_powwer = function(sh){
+  out = data.table(show = sh, character = names(s3[[sh]]), count = s3[[sh]])
+  out$corr = sapply(names(s3[[sh]]), function(z) cor(dat[show==sh]$imdb, dat[show==sh][[paste0("cast_",z)]]) )
+  out
+}
+eda_char_pow = lapply(shows, char_powwer) %>% do.call(rbind,.)
+
+ggplot(eda_char_pow) + aes(x = paste(show,character,sep=":"), y = count, fill = corr) +
+  geom_col(color = "black") + 
+  theme_classic() + 
+  scale_fill_gradient2(low = "red", mid = "#EEEEAA", high = "blue", midpoint = 0, name = "Correlation") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + 
+  xlab("Character") + ylab("Percentage Screentime in repective show") + 
+  ggtitle("Correlation with IMDb Rating and percetage sceentime of characters", subtitle = "Figure 2")
+  
+```
+
+```{r data_eda2, out.width="50%"}
+ggplot(dat) + aes(x=show_f, y=imdb) +
+  geom_boxplot() + 
+  theme_classic() +
+  xlab("SHOW") + ylab("IMDb Rating") + 
+  ylim(c(3.5, 9.5)) +
+  scale_y_continuous(breaks = 1:10, limits = c(3.24, 9.55)) +
+  ggtitle("Boxplot of ratings by shows", subtitle = "Figure 3")
+ggplot(dat[show=="TNG"]) + aes(x=season_f, y=imdb) +
+  geom_boxplot() +
+  theme_classic() +
+  scale_y_continuous(breaks = 1:10, limits = c(3.24, 9.55)) +
+  xlab("Season") + ylab("IMDb Rating") + 
+  ggtitle("Boxplot of ratings by seasons in TNG", subtitle = "Figure 4")
+```
+Table 1 provides a information on structure of the data, including counts of variables. Figure 1 illustrates the distribution of episode ratings. The distribution appears to be roughly normal, permitting further analysis without variable transformations. Figure 2 illustrates the correlation of character-screentime with the IMDb ratings, along with what percentage of screentime the character occupied in its respective show. We some strong negative correlations for "TNG: Troi" and "DS9: Dax", while seeling a strong positive correlation for characters like "DS9: Sisko" and "TNG: Picard". Figure 3 illustrates distributions of ratings within each show. The shows appear to have similar ratings, with the median of TNG being a little lower than the others. Figure 4 shows the boxplots of ratings across seasons within TNG. We see significant variations across seasons, with the later seasons being somewhat better rated. We observe similar trends for other shows as well (not illustrated).  
+
+## Modeling    
+
 
 <!-- Summary -->
 <!-- A few sentences describing the inferential question(s), the method used and the most important results. -->
