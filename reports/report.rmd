@@ -109,9 +109,65 @@ ggplot(dat[show=="TNG"]) + aes(x=season_f, y=imdb) +
   xlab("Season") + ylab("IMDb Rating") + 
   ggtitle("Boxplot of ratings by seasons in TNG", subtitle = "Figure 4")
 ```
-Table 1 provides a information on structure of the data, including counts of variables. Figure 1 illustrates the distribution of episode ratings. The distribution appears to be roughly normal, permitting further analysis without variable transformations. Figure 2 illustrates the correlation of character-screentime with the IMDb ratings, along with what percentage of screentime the character occupied in its respective show. We some strong negative correlations for "TNG: Troi" and "DS9: Dax", while seeling a strong positive correlation for characters like "DS9: Sisko" and "TNG: Picard". Figure 3 illustrates distributions of ratings within each show. The shows appear to have similar ratings, with the median of TNG being a little lower than the others. Figure 4 shows the boxplots of ratings across seasons within TNG. We see significant variations across seasons, with the later seasons being somewhat better rated. We observe similar trends for other shows as well (not illustrated).  
+Table 1 provides a information on structure of the data, including counts of variables. Figure 1 illustrates the distribution of episode ratings. The distribution appeared to be roughly normal, permitting further analysis without variable transformations. Figure 2 illustrates the correlation of character-screentime with the IMDb ratings, along with what percentage of screentime the character occupied in their respective show. We observed some strong negative correlations for "TNG: Troi" and "DS9: Dax", while seeing strong positive correlation for characters like "DS9: Sisko" and "TNG: Picard". Figure 3 illustrates distributions of ratings within each show. The shows appeared to have similar ratings, with the median of TNG being a little lower than the medians of others. Figure 4 shows the boxplots of ratings across seasons within TNG. We observed significant variations across seasons, with the later seasons being somewhat better rated. We observed similar trends for other shows as well (not illustrated).  
 
 ## Modeling    
+```{r basemodel}
+# m_onlyseason = lmer(formula = imdb ~  (1|season_f), data = dat)
+# 
+# m_only_director = lmer(formula = imdb ~  (1|director_f), data = dat)
+# 
+# m_onlyheirarchics = lmer(formula = imdb ~  (1|season_f) + (1|director_f), data = dat)
+# 
+# f_withpos = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
+# f_withpos = paste("imdb ~",f_withpos, " + partofseason + (1|season_f) + (1|director_f)") %>% as.formula
+# m_withpos = lmer(formula = f_withpos, data = dat)
+
+f_regular = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
+f_regular = paste("imdb ~",f_regular, " + (1|season_f) + (1|director_f)") %>% as.formula
+m_regular = lmer(formula = f_regular, data = dat)
+sm_regular = summary(m_regular)
+re_regular=unclass(VarCorr(m_regular))
+re_regular = c("season" = re_regular$season_f[[1]], 
+               "director" = re_regular$director_f[[1]], 
+               "residual" = attr(re_regular,"sc")^2)
+re_regular_perc = 100*re_regular/sum(re_regular)
+re_regular_perc %<>% round(2)
+
+# f_onlycast = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
+# f_onlycast = paste("imdb ~",f_onlycast) %>% as.formula
+# m_onlycast = lm(formula = f_onlycast, data = dat)
+# 
+# f_withshow = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
+# f_withshow = paste("imdb ~",f_withshow, " + (1|season_f) + (1|director_f) + (1|show_f)") %>% as.formula
+# m_withshow = lmer(formula = f_withshow, data = dat)
+
+
+
+#with episode counter to balance viewership 
+#other potential models
+
+#anova results
+#regular = withpos
+#regular > onlydirector
+#regular > onlyheirarchichs
+#regular > onlycast
+#regular !! withshow
+```
+I used a linear hierarchical model to answer our research questions. The equation of the final model was:  
+
+$$ y_i = \beta_0 + \gamma_{0,j} + \gamma_{1,k} + \sum_{p=1}^{33} \beta_px_{p,i} + \epsilon_i $$  
+
+$$(\epsilon, \gamma_{0,j}, \gamma_{1,k}) \sim \mathcal{N}_3(0, \Sigma)$$
+
+where $i$ is the observation index, $y$ is the IMDb rating, $\beta_0$ is the grand intercept of the model, $\gamma_{0,j}$ is the random intercept effect from the show:season, $\gamma_{1,k}$ is the random intercept effect from the director, $p$ is index for one of the 33 characters, $\beta_p$ is the linear coefficient for the screentime of character $p$, $x_{p,i}$ is the screentime value of character $p$ in episode $i$, $\epsilon_i$ is the residual, and $\Sigma$ is the covariance matrix for the three residual terms. I did not use random effects model as the current model had a quite a large number of variables, especially for the small data, and introduction of more random effects made the model too complex while hurting interpretability. I compared this model to a few others using anova. It was observed to be significantly better than a model with only director and season:show variables, indicating that the cast variables are important. It was also significantly better than a model without any of the random effects, indicating that the levels are important. It was not significantly different than the model which included position of episode within season as a fixed effect variable, and hence that variable was dropped. It was also not significantly different from the model that has show as another random effect, and hence that was also dropped.  
+
+### Results  
+
+In the random effects, the show:season level captured `r re_regular_perc["season"]`% of the variation. The director level captured `r re_regular_perc["director"]`% of the variation.
+
+
+
 
 
 <!-- Summary -->
