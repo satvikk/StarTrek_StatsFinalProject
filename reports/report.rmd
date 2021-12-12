@@ -1,18 +1,18 @@
 ---
 title: "Star Trek: The Analysis"
 author: "Satvik Kishore"
+subtitle: "IDS702: Final Project"
 output:
   pdf_document: default
   html_notebook: default
 ---
 
-```{r setup, echo=FALSE}
+```{r setup, echo=FALSE, include=FALSE}
 knitr::opts_chunk$set(
 	echo = FALSE,
 	message = FALSE,
 	warning = FALSE
 )
-
 library(data.table)
 library(rjson)
 library(magrittr)
@@ -57,7 +57,7 @@ Star Trek is one of the most successful science fiction media franchises and was
 
 ## Data  
 
-The two sources of data are the IMDb datasets provided IMDb on datasets.imdbws.com (collected on Nov 23, 2021), and script data provided on www.chakoteya.net/StarTrek/index.html. The IMDb data was available in a relational schema form. It was very large and had most of IMDb data contained. I filtered and wrangled to select only the four shows in consideration, with the variables: director name, names of writers, episode number, season number, and the IMDb rating. A few episodes had multiple directors. Combination of directors were considered to be a different director. Most episodes had multiple writers, and this variable was dropped from further analysis. The script data was provided as a json, formatted as Show -> episode -> character -> all lines. For each character, within each show, I computed total number of words spoken by the character in the episode, and divided it by the total number of words spoken in the entire episode. This gave me the screentime for each character in each episode as a percentage with the value being between 0 and 100. I only picked main characters from this transformed data and merged it with the IMDb data. There were a few issues with matching episodes as the scripts data sometimes assumed multi-part episodes as single episodes. These episodes were split before merging, and the final data assumes same screentime values for each episode in these multi-part episodes to be the same. 
+The two sources of data are the IMDb datasets provided IMDb on \url{datasets.imdbws.com} (collected on Nov 23, 2021), and script data provided on \url{www.chakoteya.net/StarTrek/index.html}. The IMDb data was available in a relational schema form. It was very large and had most of IMDb data contained. I filtered and wrangled to select only the four shows in consideration, with the variables: director name, names of writers, episode number, season number, and the IMDb rating. A few episodes had multiple directors. Combination of directors were considered to be a different director. Most episodes had multiple writers, and this variable was dropped from further analysis. The script data was provided as a json, formatted as Show -> episode -> character -> all lines. For each character, within each show, I computed total number of words spoken by the character in the episode, and divided it by the total number of words spoken in the entire episode. This gave me the screentime for each character in each episode as a percentage with the value being between 0 and 100. I only picked main characters from this transformed data and merged it with the IMDb data. There were a few issues with matching episodes as the scripts data sometimes assumed multi-part episodes as single episodes. These episodes were split before merging, and the final data assumes same screentime values for each episode in these multi-part episodes to be the same. 
 
 ### Exploratory Data Analysis:  
 
@@ -90,7 +90,7 @@ ggplot(eda_char_pow) + aes(x = paste(show,character,sep=":"), y = count, fill = 
   scale_fill_gradient2(low = "red", mid = "#EEEEAA", high = "blue", midpoint = 0, name = "Correlation") + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + 
   xlab("Character") + ylab("Percentage Screentime in repective show") + 
-  ggtitle("Correlation with IMDb Rating and percetage sceentime of characters", subtitle = "Figure 2")
+  ggtitle("Correlation with IMDb Rating and percentage sceentime of characters", subtitle = "Figure 2")
   
 ```
 
@@ -134,6 +134,9 @@ re_regular = c("season" = re_regular$season_f[[1]],
 re_regular_perc = 100*re_regular/sum(re_regular)
 re_regular_perc %<>% round(2)
 
+# ci_regular = confint(m_regular)
+ci_regular = readRDS("../data/temp_ciregular.rds")
+
 # f_onlycast = paste(names(dat)[grepl("cast",names(dat))], collapse = " + ")
 # f_onlycast = paste("imdb ~",f_onlycast) %>% as.formula
 # m_onlycast = lm(formula = f_onlycast, data = dat)
@@ -154,20 +157,115 @@ re_regular_perc %<>% round(2)
 #regular > onlycast
 #regular !! withshow
 ```
-I used a linear hierarchical model to answer our research questions. The equation of the final model was:  
+I used a linear hierarchical model to answer the questions of interest. The equation of the final model was:  
 
 $$ y_i = \beta_0 + \gamma_{0,j} + \gamma_{1,k} + \sum_{p=1}^{33} \beta_px_{p,i} + \epsilon_i $$  
 
 $$(\epsilon, \gamma_{0,j}, \gamma_{1,k}) \sim \mathcal{N}_3(0, \Sigma)$$
 
-where $i$ is the observation index, $y$ is the IMDb rating, $\beta_0$ is the grand intercept of the model, $\gamma_{0,j}$ is the random intercept effect from the show:season, $\gamma_{1,k}$ is the random intercept effect from the director, $p$ is index for one of the 33 characters, $\beta_p$ is the linear coefficient for the screentime of character $p$, $x_{p,i}$ is the screentime value of character $p$ in episode $i$, $\epsilon_i$ is the residual, and $\Sigma$ is the covariance matrix for the three residual terms. I did not use random effects model as the current model had a quite a large number of variables, especially for the small data, and introduction of more random effects made the model too complex while hurting interpretability. I compared this model to a few others using anova. It was observed to be significantly better than a model with only director and season:show variables, indicating that the cast variables are important. It was also significantly better than a model without any of the random effects, indicating that the levels are important. It was not significantly different than the model which included position of episode within season as a fixed effect variable, and hence that variable was dropped. It was also not significantly different from the model that has show as another random effect, and hence that was also dropped.  
+where $i$ is the observation index, $y$ is the IMDb rating, $\beta_0$ is the grand intercept of the model, $\gamma_{0,j}$ is the random intercept effect from the \texttt{show:season}, $\gamma_{1,k}$ is the random intercept effect from the \texttt{director}, $p$ is index for one of the 33 characters, $\beta_p$ is the linear coefficient for the \texttt{screentime} of character $p$, $x_{p,i}$ is the \texttt{screentime} value of character $p$ in episode $i$, $\epsilon_i$ is the residual, and $\Sigma$ is the covariance matrix for the three residual terms. I did not use random effects model as the current model had a quite a large number of variables, especially for the small data, and introduction of more random effects made the model too complex while hurting interpretability. I compared this model to a few others using anova. It was observed to be significantly better than a model with only director and season:show variables, indicating that the cast variables are important. It was also significantly better than a model without any of the random effects, indicating that the levels are important. It was not significantly different than the model which included position of episode within season as a fixed effect variable, and hence that variable was dropped. It was also not significantly different from the model that has show as another random effect, and hence that was also dropped.  
 
 ### Results  
 
-In the random effects, the show:season level captured `r re_regular_perc["season"]`% of the variation. The director level captured `r re_regular_perc["director"]`% of the variation.
+In the random effects, the \texttt{show:season} level captured `r re_regular_perc["season"]`% of the variation. The \texttt{director} level captured `r re_regular_perc["director"]`% of the variation, strongly indicating that the \texttt{show:season} has a strong association with the ratings of its constituent episodes, whereas there is insufficient evidence to conclude the same for episode directors. This is also evidenced in figures 5 and 6, where we can see that there is a large overlap between the effects of directors, but there are show:seasons that can be said to be better than other show:seasons with strong confidence. TNG:5, TNG:6, and ENT:4 are clearly far better than the likes of TNG:1 and TNG:2. This also explains some why using \texttt{show} as an heirachical variable did not improve the model, as there is large variation in seasons within shows.  
+
+```{r dotplots, out.width="50%"}
+re_obj = ranef(m_regular, condvar = TRUE)
+
+dir_qq = attr(re_obj$director_f, "postVar")
+sea_qq = attr(re_obj$season_f, "postVar")
+
+dir.interc<-re_obj$director_f
+sea.interc<-re_obj$season_f
+
+dir_pdf = data.table(Intercept=dir.interc[,1],
+                     sd.interc = 1.96*sqrt(dir_qq[,,1:length(dir_qq)]),
+                     lev.names=rownames(dir.interc))
+sea_pdf = data.table(Intercept=sea.interc[,1],
+                     sd.interc = 1.96*sqrt(sea_qq[,,1:length(sea_qq)]),
+                     lev.names=rownames(sea.interc))
+
+dir_pdf$lev.names = factor(dir_pdf$lev.names, levels=dir_pdf$lev.names[order(dir_pdf$Intercept)])
+sea_pdf$lev.names = factor(sea_pdf$lev.names, levels=sea_pdf$lev.names[order(sea_pdf$Intercept)])
+
+print(
+  ggplot(dir_pdf) + aes(x = Intercept, xmin = Intercept - sd.interc, xmax = Intercept + sd.interc, y = lev.names) +
+    geom_point(color="skyblue4") +
+    geom_errorbarh() +
+    theme_classic() + 
+    ylab("Director") + 
+    ggtitle("Random Effects for Directors", subtitle = "Figure 5")
+)
+
+print(
+  ggplot(sea_pdf) + aes(x = Intercept, xmin = Intercept - sd.interc, xmax = Intercept + sd.interc, y = lev.names) +
+    geom_point(color="springgreen4") +
+    geom_errorbarh() +
+    theme_classic() + 
+    ylab("Show:Season") + 
+    ggtitle("Random Effects for Show:Seaons", subtitle = "Figure 6")
+)
+
+
+```
+```{r ciplot, fig.height=4, fig.width=7}
+cipdf = ci_regular[5:nrow(ci_regular),]
+rncipdf = rownames(cipdf)
+rncipdf %<>% substr(., start = 6, stop = nchar(.))
+cipdf = data.table(cipdf)
+names(cipdf) = c("min", "max")
+cipdf$character = rncipdf
+cipdf$mean = sm_regular$coefficients[-1,1]
+
+char_to_show = sapply(rncipdf, function(ch) sapply(maincast, function(mc) ch %in% mc) ) %>% apply(2,function(z) names(maincast)[z])
+char_to_show$WORF = "TNG"
+char_to_show %<>% unlist
+cipdf$show = char_to_show[cipdf$character]
+
+worf_pdf = cipdf[character=="WORF"]
+worf_pdf[,show := "DS9"]
+worf_pdf[,character := " WORF"]
+b1_pdf = data.table(character = " ")
+b2_pdf = data.table(character = "  ")
+b3_pdf = data.table(character = "   ")
+
+cipdf = rbind(cipdf[show %in% c("TNG", "DS9")], worf_pdf, cipdf[show %in% c("ENT", "VOY")])
+cipdf = rbind(cipdf[show == "TNG"], b1_pdf, cipdf[show == "DS9"], b2_pdf, cipdf[show == "VOY"], b3_pdf, cipdf[show == "ENT"], fill=T)
+
+text_pos = data.table(
+  show = c("TNG", "DS9", "VOY", "ENT"),
+  x = c("WORF", "OBRIEN", "EMH", "REED"),
+  y = 0.06
+)
+
+ggplot(cipdf) + aes(x=character, y=mean, ymin=min, ymax=max) +
+  geom_point() + 
+  geom_errorbar(aes(color=show)) +
+  geom_vline(xintercept = c(" ", "  ", "   ")) +
+  geom_hline(yintercept = 0, linetype = "longdash") +
+  scale_x_discrete(limits=cipdf$character) +
+  scale_y_continuous(breaks = (-6:5)*0.01) +
+  ylab("Screentime Coefficient") + xlab("Character") +
+  ggtitle("Estimates of screentime coefficients for each character", subtitle="Figure 7") +
+  theme_classic() +
+  geom_text(data = text_pos, mapping = aes(x=x, y=y, label=show, ymin=NULL, ymax=NULL)) +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+```
+
+## Discussion
+
+
+## Conclusion
 
 
 
+character images
+fix equation
+subjective inferences
+limtations
+benefts
+extra - comparisons
 
 
 <!-- Summary -->
