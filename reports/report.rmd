@@ -1,7 +1,8 @@
 ---
 title: "Star Trek: The Analysis"
 author: "Satvik Kishore"
-subtitle: "IDS702: Final Project"
+subtitle: "Duke University IDS702: Final Project"
+date: "12th December, 2021"
 output:
   pdf_document: default
   html_notebook: default
@@ -21,6 +22,12 @@ library(lme4)
 library(xtable)
 
 shows = c("TNG", "DS9", "VOY", "ENT")
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+SHOW_COLORS = gg_color_hue(4)[c(3,1,2,4)]
+names(SHOW_COLORS) = shows
 maincast = list()
 maincast$TNG = c("PICARD", "RIKER", "LAFORGE", "WORF", "CRUSHER", "TROI", "DATA", "WESLEY")
 maincast$DS9 = c("SISKO", "ODO", "DAX", "JAKE", "OBRIEN", "QUARK", "BASHIR", "KIRA", "WORF")
@@ -43,11 +50,11 @@ dat[episode_placement >= 0.66, partofseason := "end"]
 
 ## Summary  
 
-Star Trek is Science Fiction media franchise spanning several TV shows, movies, books, video games, and more. In this analysis, I focused on four Star Trek TV shows that ran in sequence from 1987 through 2005, with significant overlaps in the years they each ran. The questions I wanted to answer are:  
+Star Trek is Science Fiction media franchise spanning several TV shows, movies, books, video games, and more. In this analysis, I focused on four Star Trek TV shows that ran in sequence from 1987 through 2005, with significant overlaps in the years they each ran. The questions I wanted to answer are:
 
-- Are their differences in quality across the four shows and their constituent seasons
-- Which characters had the greatest influence on the rating of the episode, either positive or negative
-- Are their differences in quality across the directors
+- Are their differences in quality across the four shows and their constituent seasons?
+- Which characters had the greatest influence on the rating of the episode, either positive or negative?
+- Are their differences in quality across the directors?
 
 To answer these questions, I used IMDb ratings of the episodes. I performed hierarchical linear regressions and answered my questions using the estimates from this model. The most important results were %%%%TODO%%%%  
 
@@ -83,11 +90,12 @@ char_powwer = function(sh){
   out
 }
 eda_char_pow = lapply(shows, char_powwer) %>% do.call(rbind,.)
-
-ggplot(eda_char_pow) + aes(x = paste(show,character,sep=":"), y = count, fill = corr) +
+eda_char_pow$showchar = paste(eda_char_pow$show,eda_char_pow$character,sep=":")
+ggplot(eda_char_pow) + aes(x = showchar, y = count, fill = corr) +
   geom_col(color = "black") + 
   theme_classic() + 
   scale_fill_gradient2(low = "red", mid = "#EEEEAA", high = "blue", midpoint = 0, name = "Correlation") + 
+  scale_x_discrete(limits=eda_char_pow$showchar) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + 
   xlab("Character") + ylab("Percentage Screentime in repective show") + 
   ggtitle("Correlation with IMDb Rating and percentage sceentime of characters", subtitle = "Figure 2")
@@ -95,15 +103,18 @@ ggplot(eda_char_pow) + aes(x = paste(show,character,sep=":"), y = count, fill = 
 ```
 
 ```{r data_eda2, out.width="50%"}
-ggplot(dat) + aes(x=show_f, y=imdb) +
+ggplot(dat) + aes(x=show_f, y=imdb, color=show_f) +
   geom_boxplot() + 
   theme_classic() +
   xlab("SHOW") + ylab("IMDb Rating") + 
   ylim(c(3.5, 9.5)) +
   scale_y_continuous(breaks = 1:10, limits = c(3.24, 9.55)) +
-  ggtitle("Boxplot of ratings by shows", subtitle = "Figure 3")
+  scale_color_manual(values = SHOW_COLORS) +
+  ggtitle("Boxplot of ratings by shows", subtitle = "Figure 3") +
+  theme(legend.position = "none")
+
 ggplot(dat[show=="TNG"]) + aes(x=season_f, y=imdb) +
-  geom_boxplot() +
+  geom_boxplot(color = SHOW_COLORS["TNG"]) +
   theme_classic() +
   scale_y_continuous(breaks = 1:10, limits = c(3.24, 9.55)) +
   xlab("Season") + ylab("IMDb Rating") + 
@@ -157,18 +168,38 @@ ci_regular = readRDS("../data/temp_ciregular.rds")
 #regular > onlycast
 #regular !! withshow
 ```
-I used a linear hierarchical model to answer the questions of interest. The equation of the final model was:  
+I used a linear hierarchical model to answer the questions of interest. The equation of the final model was:
 
-$$ y_i = \beta_0 + \gamma_{0,j} + \gamma_{1,k} + \sum_{p=1}^{33} \beta_px_{p,i} + \epsilon_i $$  
+$$ y_i = \beta_0 + \gamma_{0,j_i} + \gamma_{1,k_i} + \sum_{p=1}^{33} \beta_px_{p,i} + \epsilon_i $$
+$$\epsilon_i \sim  \mathcal{N}(0, \sigma^2)$$
+$$(\gamma_{0j}, \gamma_{1k}) \sim \mathcal{N}_2(\mathbf{0}, \Sigma)$$
 
-$$(\epsilon, \gamma_{0,j}, \gamma_{1,k}) \sim \mathcal{N}_3(0, \Sigma)$$
+where $i$ is the observation index, $y$ is the IMDb rating, $\beta_0$ is the grand intercept of the model, $\gamma_{0,j_i}$ is the random intercept effect from the \texttt{show:season}, $j_i$ is the show:season for episode $i$, $\gamma_{1,k_i}$ is the random intercept effect from the \texttt{director}, $k_i$ is the director for episode $i$, $p$ is index for one of the 33 characters, $\beta_p$ is the linear coefficient for the \texttt{screentime} of character $p$, $x_{p,i}$ is the \texttt{screentime} value of character $p$ in episode $i$, $\epsilon_i$ is the residual, $\sigma^2$ is the variance of the residuals, and $\Sigma$ is the covariance matrix for the three residual terms. I did not use random effects model as the current model had a quite a large number of variables, especially for the small data, and introduction of more random effects made the model too complex while hurting interpretability. I compared this model to a few others using anova. It was observed to be significantly better than a model with only director and season:show variables, indicating that the cast variables are important. It was also significantly better than a model without any of the random effects, indicating that the levels are important. It was not significantly different than the model which included position of episode within season as a fixed effect variable, and hence that variable was dropped. It was also not significantly different from the model that has show as another random effect, and hence that was also dropped.  
 
-where $i$ is the observation index, $y$ is the IMDb rating, $\beta_0$ is the grand intercept of the model, $\gamma_{0,j}$ is the random intercept effect from the \texttt{show:season}, $\gamma_{1,k}$ is the random intercept effect from the \texttt{director}, $p$ is index for one of the 33 characters, $\beta_p$ is the linear coefficient for the \texttt{screentime} of character $p$, $x_{p,i}$ is the \texttt{screentime} value of character $p$ in episode $i$, $\epsilon_i$ is the residual, and $\Sigma$ is the covariance matrix for the three residual terms. I did not use random effects model as the current model had a quite a large number of variables, especially for the small data, and introduction of more random effects made the model too complex while hurting interpretability. I compared this model to a few others using anova. It was observed to be significantly better than a model with only director and season:show variables, indicating that the cast variables are important. It was also significantly better than a model without any of the random effects, indicating that the levels are important. It was not significantly different than the model which included position of episode within season as a fixed effect variable, and hence that variable was dropped. It was also not significantly different from the model that has show as another random effect, and hence that was also dropped.  
+### Model Assesment  
+
+```{r model_ass, out.width="50%"}
+ggplot() + geom_qq(aes(sample=residuals(m_regular))) +
+  #theme_classic() +
+  geom_qq_line()
+  #xlab("Theoretical Quantiles") +
+  #ylab("Sample Quantiles") +
+  #ggtitle("QQ plot of Model Residuals", subtitle = "Figure 5") 
+  
+
+ggplot() + aes(x = fitted.values(m_regular), y = residuals(m_regular)) +
+  geom_point() +
+  geom_hline(yintercept = 0) + 
+  xlab("Fitted Values") +
+  ylab("Residuals") +
+  ggtitle("Fitted vs Residuals", subtitle = "Figure 6") +
+  theme_classic()
+  
+```
 
 ### Results  
 
-In the random effects, the \texttt{show:season} level captured `r re_regular_perc["season"]`% of the variation. The \texttt{director} level captured `r re_regular_perc["director"]`% of the variation, strongly indicating that the \texttt{show:season} has a strong association with the ratings of its constituent episodes, whereas there is insufficient evidence to conclude the same for episode directors. This is also evidenced in figures 5 and 6, where we can see that there is a large overlap between the effects of directors, but there are show:seasons that can be said to be better than other show:seasons with strong confidence. TNG:5, TNG:6, and ENT:4 are clearly far better than the likes of TNG:1 and TNG:2. This also explains some why using \texttt{show} as an heirachical variable did not improve the model, as there is large variation in seasons within shows.  
-
+In the random effects, the \texttt{show:season} level captured `r re_regular_perc["season"]`% of the variation. The \texttt{director} level captured `r re_regular_perc["director"]`% of the variation, strongly indicating that the \texttt{show:season} has a strong association with the ratings of its constituent episodes, whereas there is insufficient evidence to conclude the same for episode directors. This is also evidenced in figures 7 and 8, where we can see that there is a large overlap between the effects of directors, but there are show:seasons that can be said to be better than other show:seasons with strong confidence. The confidence intervals in this discussion are all 95% confidence intervals. TNG:5, TNG:6, and ENT:4 are clearly far better than the likes of TNG:1 and TNG:2. There were seven different show:seasons that had their confidence intervals beyond the third worst seaon, i.e. DS9:1. The spread of TNG across both ends of the chart partially explains why using \texttt{show} as an heirachical variable did not improve the model, as there is large variation in seasons within shows. The values of these random effects can be interpreted as, for example DS9:1 with a coefficient of -0.37 means that holding other variables constant, episodes in the first season of Deep Space 9 are on average rated 0.37 points less than the overall mean.  
 ```{r dotplots, out.width="50%"}
 re_obj = ranef(m_regular, condvar = TRUE)
 
@@ -187,6 +218,7 @@ sea_pdf = data.table(Intercept=sea.interc[,1],
 
 dir_pdf$lev.names = factor(dir_pdf$lev.names, levels=dir_pdf$lev.names[order(dir_pdf$Intercept)])
 sea_pdf$lev.names = factor(sea_pdf$lev.names, levels=sea_pdf$lev.names[order(sea_pdf$Intercept)])
+sea_pdf$show = substr(sea_pdf$lev.names, 1, 3)
 
 print(
   ggplot(dir_pdf) + aes(x = Intercept, xmin = Intercept - sd.interc, xmax = Intercept + sd.interc, y = lev.names) +
@@ -194,20 +226,24 @@ print(
     geom_errorbarh() +
     theme_classic() + 
     ylab("Director") + 
-    ggtitle("Random Effects for Directors", subtitle = "Figure 5")
+    ggtitle("Random Effects for Directors", subtitle = "Figure 7")
 )
 
 print(
   ggplot(sea_pdf) + aes(x = Intercept, xmin = Intercept - sd.interc, xmax = Intercept + sd.interc, y = lev.names) +
-    geom_point(color="springgreen4") +
     geom_errorbarh() +
+    geom_point(aes(color=show)) +
     theme_classic() + 
     ylab("Show:Season") + 
-    ggtitle("Random Effects for Show:Seaons", subtitle = "Figure 6")
+    scale_color_manual(values = SHOW_COLORS) +
+    theme(legend.position = "none") +
+    ggtitle("Random Effects for Show:Seasons", subtitle = "Figure 8")
 )
 
 
 ```
+
+Figure 9 illustrates the estimates of the fixed effects, where we say that the effects that have their confidence interval to be beyond zero are significant at the 95% confidence level. Our fixed effects are the coefficients for the \texttt{character-screentime} variables. These coefficients can be interpreted as, for example for VOY:PARIS with a coefficient of 0.022, we can say that controlling for other variables, a one percentage point increase in screentime for PARIS and a one percentage point decrease in screentime for "other" characters is associated with 0.022 point increase in IMDb rating. The "other" character refers to any character not included in the model, be they recurring or a one off. From the results, for most characters, we find no evidence that their \texttt{screetime} is associated with the IMDb rating. But some of them are most certainly significant. TNG:TROI stands out as the worst character, and this result agrees with the general consensus in the community that despite having constant presence in the show, the character is poorly written and not developed well. Within TNG, we also see CRUSHER have a bad rating. This is interesting as she was the only other main female character other than TROI, and her poor rating could be indicative of the fact that the show runners were poor at developing their female characters. The other significant character within TNG was WESLEY. This character is famously disliked, and this dislike has been referenced in other TV shows as well. The show runners did scrap this character after the fourth season. The other significant characters were DS9:SISKO, DS9:DAX, and VOY:PARIS. There were no significant characters in ENT. This is likely due to the lower number of episodes in this show, leading to less data. 
 ```{r ciplot, fig.height=4, fig.width=7}
 cipdf = ci_regular[5:nrow(ci_regular),]
 rncipdf = rownames(cipdf)
@@ -245,28 +281,33 @@ ggplot(cipdf) + aes(x=character, y=mean, ymin=min, ymax=max) +
   geom_hline(yintercept = 0, linetype = "longdash") +
   scale_x_discrete(limits=cipdf$character) +
   scale_y_continuous(breaks = (-6:5)*0.01) +
+  scale_color_manual(values = SHOW_COLORS) +
   ylab("Screentime Coefficient") + xlab("Character") +
-  ggtitle("Estimates of screentime coefficients for each character", subtitle="Figure 7") +
+  ggtitle("Estimates of screentime coefficients for each character", subtitle="Figure 9") +
   theme_classic() +
   geom_text(data = text_pos, mapping = aes(x=x, y=y, label=show, ymin=NULL, ymax=NULL)) +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 ```
 
-## Discussion
 
 
 ## Conclusion
 
+Star Trek IMDb data from four shows was analyzed in context of three questions that we set out to answer. The results indicate that:
 
+- There are strong differences across show/season combinations, with atleast seven individual seasons found to be better than the third worst season over all four shows.
+- The characters with strongest positive influence were Sisko from Deep Space 9 and Paris from Voyager. The character with strong negative influence were Dr. Crusher, Troi, and Wesley from The Next Generations, and Dax from Deep Space 9.
+- No evidence for differences in quality across directors was observed.
 
-character images
-fix equation
-subjective inferences
-limtations
-benefts
-extra - comparisons
+### Limitations and Future Work
 
+- While the heirarchical structure of the model helps in taking care of dependence in residuals within seasons, it is still possible that a few of the multi-part episodes had non independent residuals. 
+- The screentime was calculated as proportion of words spoken by characters. The source data was not fully clean as a few whitespace issues may have fused words together and reduced counts. Incidence of this issue was not common enough and was completely at random, and should only have a minor influence on the results.
+- IMDb calculates ratings as a weighted mean from individual user ratings, with the weight calculation algorithm being a secret. While the weighting scheme is in place to prevent rating. manipulation, it leaves an uncertainty as to exactly what our outcome variable is.
+- Characters change and evolve through a show's natural progression, and thus their effect on episode ratings is likely to be variable between seasons. This effect could be modeled using a random slopes model however the multifold increase in number of variables makes the modeling difficult. Thus we are forced to assume that characters have a uniform effect on episode ratings.
+- The large number of directors, with small number of episodes per director makes it difficult to draw any conclusions from this data.
+- Future work: We can also look at episode writers and variation in their quality. This will however be a challenge due to variable number of writers across episodes, and almost each episode being worked on by a unique combination them. 
 
 <!-- Summary -->
 <!-- A few sentences describing the inferential question(s), the method used and the most important results. -->
