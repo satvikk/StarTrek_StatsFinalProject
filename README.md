@@ -10,9 +10,10 @@ To answer these questions, I use the IMDb ratings of the episodes. I model the d
 
 
 Sample Results:
-![Alt text](./report/show_season_dotplot.png?raw=true)
-![plot](./report/screentime_coef.png?raw=true)
+![Alt text](./reports/show_season_dotplot.png?raw=true)
+![plot](./reports/screentime_coef.png?raw=true)
 
 
 Here, ScreenTime Coefficient is the estimate of change in rating vs change in screentime of character by one percentage point
+
 Checkout ./reports/report.pdf for the full analysis
