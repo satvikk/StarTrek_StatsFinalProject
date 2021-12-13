@@ -9,7 +9,9 @@ Star Trek is a Science Fiction media franchise spanning several TV shows, movies
 To answer these questions, I use the IMDb ratings of the episodes. I model the data using hierarchical linear regressions and answer the questions using the estimates from this model. The most important results were that there are significant differences in quality across the seasons of the shows. Some of the characters are found to have strong associations between their screentime and corresponding episode ratings. Screentime of Sisko from Star Trek: Deep Space 9 and Paris from Star Trek: Voyager have the strongest positive impact on episode ratings whereas screentime of Dr. Crusher, Troi, and Wesley from Star Trek: The Next Generation, and Dax from Star Trek: Deep Space 9 have the strongest negative impact on the ratings.
 
 
-Sample Results:
+Sample Results:  
+
+
 ![Alt text](./reports/show_season_dotplot.png?raw=true)
 ![plot](./reports/screentime_coef.png?raw=true)
 
