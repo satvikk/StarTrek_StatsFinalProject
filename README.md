@@ -48,7 +48,7 @@ Checkout [./reports/report.pdf](https://github.com/satvikk/StarTrek_StatsFinalPr
 
 ![Alt text](./reports/show_season_dotplot.png?raw=true)
 - Significant difference in quality across Show:Seasons was observed. Season 1 of The Next Generations was the worst while Season 6 of The Next Generations was the best
-- 
+ 
 > 🔑 Quality of Directors  
 
 There was no evidence for difference in quality across directors. This is likely due to the small number of episodes per director.
