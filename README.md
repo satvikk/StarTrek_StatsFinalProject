@@ -4,7 +4,7 @@ Statistical Analysis of Episode Ratings across four TV shows for [IDS702 class](
 
 Star Trek is a Science Fiction media franchise spanning several TV shows, movies, books, and video games. This analysis focused on four Star Trek TV shows that ran in sequence from 1987 through 2005, with significant overlaps in the years they each ran.
 
-Checkout [./reports/report.pdf](https://github.com/satvikk/StarTrek_StatsFinalProject/blob/main/reports/report.pdf) for the full analysis.
+*Checkout [./reports/report.pdf](https://github.com/satvikk/StarTrek_StatsFinalProject/blob/main/reports/report.pdf) for the full analysis.*
 
 ## Data 
 - IMDb Ratings and Episode information from https://datasets.imdbws.com (collected on Nov 23, 2021). This formed the source for the tabular data used in the analysis
@@ -21,7 +21,7 @@ Checkout [./reports/report.pdf](https://github.com/satvikk/StarTrek_StatsFinalPr
   - Episode Rating
   - Proxy Character Screentimes for main characters (33 in all)
 
-## Research Question 🔬
+## Research Questions 🔬
 - Which characters have the greatest influence on the ratings of episodes, either positive or negative?
 - Are their differences in quality across the four shows and their constituent seasons?
 - Are their differences in quality across the directors?
