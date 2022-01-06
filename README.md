@@ -1,4 +1,8 @@
-# StarTrek_StatsFinalProject
+# Star Trek: The Analysis 🖖 <img width=90 align="right" src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Duke_University_logo.svg/1024px-Duke_University_logo.svg.png">
+Statistical Analysis of Episode Ratings across four TV shows for [IDS702 class](https://ids702-f21.olanrewajuakande.com) @ Duke University.
+
+This is the repository for the 
+
 
 Star Trek is a Science Fiction media franchise spanning several TV shows, movies, books, and video games. This analysis focused on four Star Trek TV shows that ran in sequence from 1987 through 2005, with significant overlaps in the years they each ran. The questions of interest are:
 
